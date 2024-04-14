@@ -10,7 +10,7 @@ public static class AnimalsEndpoints
     public static void RegisterAnimalsEndpoints(this WebApplication app)
     {
         //GETs
-        app.MapGet("/animals", (IConfiguration configuration, string? orderBy = null) =>
+        app.MapGet("/animals", (IConfiguration configuration, string? orderBy = "name") =>
         {
             var animals = new List<GetAnimalResponse>();
             using (var sqlConnection = new SqlConnection(configuration.GetConnectionString("Default")))
@@ -82,6 +82,43 @@ public static class AnimalsEndpoints
                 sqlCommand.ExecuteNonQuery();
 
                 return Results.Created("", null);
+            }
+        });
+
+        //PUT
+        app.MapPut("/animals/{id:int}", (IConfiguration configuration, int id, CreateAnimalRequest request, IValidator<CreateAnimalRequest> validator) =>
+        {
+            var validation = validator.Validate(request);
+            if (!validation.IsValid) return Results.ValidationProblem(validation.ToDictionary());
+
+            using (var sqlConnection = new SqlConnection(configuration.GetConnectionString("Default")))
+            {
+                var sqlCommand = new SqlCommand("UPDATE Animals SET Name = @Name, Description = @Description, Category = @Category, Area = @Area WHERE ID = @id", sqlConnection);
+                sqlCommand.Parameters.AddWithValue("@id", id);
+                sqlCommand.Parameters.AddWithValue("@Name", request.Name);
+                sqlCommand.Parameters.AddWithValue("@Description", request.Description);
+                sqlCommand.Parameters.AddWithValue("@Category", request.Category);
+                sqlCommand.Parameters.AddWithValue("@Area", request.Area);
+                sqlCommand.Connection.Open();
+
+                sqlCommand.ExecuteNonQuery();
+
+                return Results.NoContent();
+            }
+        });
+
+        //DELETE
+        app.MapDelete("/animals/{id:int}", (IConfiguration configuration, int id) =>
+        {
+            using (var sqlConnection = new SqlConnection(configuration.GetConnectionString("Default")))
+            {
+                var sqlCommand = new SqlCommand("DELETE FROM Animals WHERE ID = @id", sqlConnection);
+                sqlCommand.Parameters.AddWithValue("@id", id);
+                sqlCommand.Connection.Open();
+
+                sqlCommand.ExecuteNonQuery();
+
+                return Results.NoContent();
             }
         });
     }
