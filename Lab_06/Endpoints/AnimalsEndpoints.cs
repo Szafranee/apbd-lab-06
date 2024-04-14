@@ -9,6 +9,7 @@ public static class AnimalsEndpoints
 {
     public static void RegisterAnimalsEndpoints(this WebApplication app)
     {
+        //GETs
         app.MapGet("/animals", (IConfiguration configuration, string? orderBy = null) =>
         {
             var animals = new List<GetAnimalResponse>();
@@ -61,6 +62,27 @@ public static class AnimalsEndpoints
                 reader.GetString(3),
                 reader.GetString(4))
             );
+        });
+
+        //POST
+        app.MapPost("/animals", (IConfiguration configuration, CreateAnimalRequest request, IValidator<CreateAnimalRequest> validator) =>
+        {
+            var validation = validator.Validate(request);
+            if (!validation.IsValid) return Results.ValidationProblem(validation.ToDictionary());
+
+            using (var sqlConnection = new SqlConnection(configuration.GetConnectionString("Default")))
+            {
+                var sqlCommand = new SqlCommand("INSERT INTO Animals (Name, Description, Category, Area) VALUES (@Name, @Description, @Category, @Area)", sqlConnection);
+                sqlCommand.Parameters.AddWithValue("@Name", request.Name);
+                sqlCommand.Parameters.AddWithValue("@Description", request.Description);
+                sqlCommand.Parameters.AddWithValue("@Category", request.Category);
+                sqlCommand.Parameters.AddWithValue("@Area", request.Area);
+                sqlCommand.Connection.Open();
+
+                sqlCommand.ExecuteNonQuery();
+
+                return Results.Created("", null);
+            }
         });
     }
 }
